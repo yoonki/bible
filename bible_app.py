@@ -8,7 +8,6 @@ pd.set_option('display.max_rows', None)
 pd.set_option('display.max_columns', None)
 pd.set_option('display.max_colwidth', None)
 
-@st.cache
 def get_verses(query):
     url = f"https://www.biblegateway.com/quicksearch/?search={query}&resultspp=5000&version=KLB"
     with requests.Session() as session:
@@ -26,27 +25,30 @@ def get_verses(query):
         return None, None
 
 def main():
-    st.title("Bible Verse Search")
+    try:
+        st.title("Bible Verse Search in KLB")
 
-    query = st.text_input("Enter the search query:")
-    df, total = get_verses(query)
-    if df is not None:
-        st.write(f"Total results: {total}")
+        query = st.text_input("한글로 성경에 나오는 단어를 입력해주세요:")
+        df, total = get_verses(query)
+        if df is not None:
+            st.write(f"Total results: {total}")
 
-        # Display results with reduced font size
-        for index, row in df.iterrows():
-            st.markdown(f"**{row['Title']}**\n{row['Verse']}", unsafe_allow_html=True)
+            # Display results with reduced font size
+            for index, row in df.iterrows():
+                st.markdown(f"**{row['Title']}**\n{row['Verse']}", unsafe_allow_html=True)
 
-        # Export to csv button
-        # if st.button("Export to csv"):
-            # Use a unique key for caching to ensure consistent behavior
-        csv_data = df.to_csv().encode('utf-8-sig')
-        st.download_button(
-            label="Download csv",
-            data=csv_data,
-            file_name=f"{total}.csv",
-            mime='text/csv',
-        )
+            # Export to csv button
+            # if st.button("Export to Excel"):
+                # Use a unique key for caching to ensure consistent behavior
+            csv_data = df.to_csv().encode('utf-8-sig')
+            st.download_button(
+                label="Download csv",
+                data=csv_data,
+                file_name=f"{total}.csv",
+                mime='text/csv',
+            )   
+    except:
+        pass
 
 if __name__ == "__main__":
     main()
