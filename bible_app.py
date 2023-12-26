@@ -21,34 +21,34 @@ def get_verses(query):
         df["Verse"] = df["Verse"].apply(lambda x: re.sub(r"In Context\n \| Full Chapter", "", x))
         return df, total
     except:
-        st.warning('검색어 없음')
+        pass
+        # st.warning('검색어 없음')
         return None, None
 
 def main():
-    try:
-        st.title("Bible Verse Search in KLB")
+    st.title("Bible Verse Search in KLB")
 
-        query = st.text_input("한글로 성경에 나오는 단어를 입력해주세요:")
-        df, total = get_verses(query)
-        if df is not None:
-            st.write(f"Total results: {total}")
+    query = st.text_input("한글로 성경에 나오는 단어를 입력해주세요:")
+    df, total = get_verses(query)
+    if df is not None:
+        st.write(f"Total results: {total}")
 
-            # Display results with reduced font size
-            for index, row in df.iterrows():
-                st.markdown(f"**{row['Title']}**\n{row['Verse']}", unsafe_allow_html=True)
+        # Display results with reduced font size
+        for index, row in df.iterrows():
+            st.markdown(f"**{row['Title']}**\n{row['Verse']}", unsafe_allow_html=True)
 
-            # Export to csv button
-            # if st.button("Export to Excel"):
-                # Use a unique key for caching to ensure consistent behavior
-            csv_data = df.to_csv().encode('utf-8-sig')
-            st.download_button(
-                label="Download csv",
-                data=csv_data,
-                file_name=f"{total}.csv",
-                mime='text/csv',
-            )   
-    except:
-        pass
+        # Export to csv button
+        # if st.button("Export to Excel"):
+            # Use a unique key for caching to ensure consistent behavior
+        csv_data = df.to_csv().encode('utf-8-sig')
+        st.download_button(
+            label="Download csv",
+            data=csv_data,
+            file_name=f"{total}.csv",
+            mime='text/csv',
+        )   
+    else:
+        st.write('검색결과없음')
 
 if __name__ == "__main__":
     main()
