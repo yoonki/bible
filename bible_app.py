@@ -28,7 +28,7 @@ def get_verses(query):
 def main():
     st.title("Bible Verse Search in KLB")
 
-    query = st.text_input("한글로 성경에 나오는 단어를 입력해주세요. 예) 어린양은 어린 + 양 임으로 어린 양 중간에 띄어쓰기를 해야함")
+    query = st.text_input("한글로 성경에 나오는 단어를 입력해주세요. 예) 어린양은 어린 + 양 조합이기 때문에 어린 양 중간에 띄어쓰기를 해야함")
     
     df, total = get_verses(query)
     if df is not None:
