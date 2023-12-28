@@ -38,7 +38,7 @@ def main():
             st.markdown(f"**{row['Title']}**\n{row['Verse']}", unsafe_allow_html=True)
 
         # Export to csv button
-        # if st.button("Export to Excel"):
+        # if st.button("Export to csv"):
             # Use a unique key for caching to ensure consistent behavior
         csv_data = df.to_csv().encode('utf-8-sig')
         st.download_button(
