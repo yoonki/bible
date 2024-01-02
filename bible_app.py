@@ -37,7 +37,7 @@ def main():
         # Display results with reduced font size
         for index, row in df.iterrows():
             # st.markdown(f"**{row['Title']}**\n{row['Verse']}", unsafe_allow_html=True)
-            st.markdown(f"<span style='color: blue;'><strong>{row['Title']}</strong></span>\n{row['Verse']}\n", unsafe_allow_html=True)
+            st.markdown(f"<span style='color: blue;'>**{row['Title']}**</span>\n\n{row['Verse']}", unsafe_allow_html=True)
 
         # Export to csv button
         # if st.button("Export to csv"):
