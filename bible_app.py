@@ -129,7 +129,7 @@ def main():
     )
 
     show_niv = st.checkbox("NIV(영어) 병행 보기", value=True)
-    niv_limit = 20
+    niv_limit = 2000
     if show_niv:
         niv_limit = st.slider(
             "NIV를 같이 가져올 구절 개수 (많을수록 느려집니다)",
