@@ -128,19 +128,19 @@ def main():
         value="사랑",
     )
 
-    show_niv = st.checkbox("NIV(영어) 병행 보기", value=True)
-    niv_limit = 2000
-    if show_niv:
-        niv_limit = st.slider(
-            "NIV를 같이 가져올 구절 개수 (많을수록 느려집니다)",
-            min_value=5, max_value=100, value=20, step=5,
-        )
+    show_niv = st.checkbox("NIV(영어) 병행 보기 (검색된 구절 전체)", value=True)
 
     df, total = get_verses(query)
     if df is not None:
         st.write(f"Total results: {total}")
-        if show_niv:
-            st.caption(f"※ 검색 결과 중 상위 {niv_limit}개 구절만 NIV를 같이 표시합니다.")
+        if show_niv and len(df) > 50:
+            st.caption(
+                f"※ 검색된 {len(df)}개 구절 전체에 대해 NIV를 하나씩 가져옵니다. "
+                "구절이 많으면 시간이 꽤 걸릴 수 있습니다."
+            )
+
+        # 전체 구절에 대해 NIV를 가져올 때 진행 상황을 보여주는 progress bar
+        progress_bar = st.progress(0) if show_niv and len(df) > 0 else None
 
         for index, row in df.iterrows():
             st.markdown(
@@ -148,13 +148,12 @@ def main():
                 unsafe_allow_html=True,
             )
 
-            if show_niv and index < niv_limit:
+            if show_niv:
                 en_ref = korean_title_to_english_ref(row["Title"])
                 if en_ref is None:
                     st.caption("NIV: 책 이름을 인식하지 못했습니다.")
                 else:
-                    with st.spinner(f"NIV 가져오는 중... ({en_ref})"):
-                        niv_text = fetch_niv_text(en_ref)
+                    niv_text = fetch_niv_text(en_ref)
                     if niv_text:
                         st.markdown(
                             f"<span style='color: green;'>**NIV ({en_ref})**</span>\n\n{niv_text}",
@@ -162,6 +161,12 @@ def main():
                         )
                     else:
                         st.caption(f"NIV 본문을 가져오지 못했습니다. ({en_ref})")
+
+                if progress_bar is not None:
+                    progress_bar.progress((index + 1) / len(df))
+
+        if progress_bar is not None:
+            progress_bar.empty()
 
         csv_data = df.to_csv().encode('utf-8-sig')
         st.download_button(
