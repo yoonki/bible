@@ -10,8 +10,8 @@ pd.set_option('display.max_colwidth', None)
 
 # ------------------------------------------------------------------
 # 1) 한글 성경 책 이름 -> 영어 성경 책 이름 매핑
-#    BibleGateway에서 NIV 구절을 찾으려면 영어 책 이름이 필요하기 때문입니다.
-#    (예: "요한복음 3:16" -> "John 3:16")
+#    BibleGateway 검색/구절 조회는 영어 책 이름(reference)을 기준으로 동작하기 때문에,
+#    한글 제목("요한복음 3:16")이 나오면 영어 형태("John 3:16")로 바꿔줘야 합니다.
 # ------------------------------------------------------------------
 KO_TO_EN_BOOK = {
     "창세기": "Genesis", "출애굽기": "Exodus", "레위기": "Leviticus",
@@ -55,14 +55,20 @@ def korean_title_to_english_ref(title: str):
     return f"{en_book} {chapter_verse}"
 
 
+def is_korean_query(text: str) -> bool:
+    """검색어에 한글이 섞여 있으면 한글 검색으로, 아니면 영문 검색으로 판단합니다."""
+    return bool(re.search(r"[가-힣]", text))
+
+
 # ------------------------------------------------------------------
-# 2) 특정 참조(예: "John 3:16")의 NIV 본문을 BibleGateway에서 가져오기
-#    같은 참조는 반복 요청하지 않도록 캐시(cache_data)를 사용합니다.
+# 2) 특정 참조(예: "John 3:16")의 본문을 원하는 번역본(version)으로 BibleGateway에서 가져오기
+#    같은 참조+버전 조합은 반복 요청하지 않도록 캐시(cache_data)를 사용합니다.
+#    (기존의 fetch_niv_text를 버전을 인자로 받도록 일반화한 함수입니다.)
 # ------------------------------------------------------------------
 @st.cache_data(show_spinner=False, ttl=3600)
-def fetch_niv_text(reference: str):
+def fetch_passage_text(reference: str, version: str):
     url = "https://www.biblegateway.com/passage/"
-    params = {"search": reference, "version": "NIV"}
+    params = {"search": reference, "version": version}
     headers = {"User-Agent": "Mozilla/5.0 (compatible; StreamlitBibleApp/1.0)"}
     try:
         resp = requests.get(url, params=params, headers=headers, timeout=10)
@@ -100,8 +106,10 @@ def fetch_niv_text(reference: str):
     return result if result else None
 
 
-def get_verses(query):
-    url = f"https://www.biblegateway.com/quicksearch/?search={query}&resultspp=5000&version=KLB"
+def get_verses(query, version):
+    """quicksearch로 검색 결과 목록(제목+본문)을 가져옵니다.
+    version에 따라 KLB(한글) 또는 NIV(영어) 등 원하는 번역본으로 검색합니다."""
+    url = f"https://www.biblegateway.com/quicksearch/?search={query}&resultspp=5000&version={version}"
     with requests.Session() as session:
         response = session.get(url)
         soup = BeautifulSoup(response.content, "lxml")
@@ -122,27 +130,46 @@ def get_verses(query):
 
 
 def main():
-    st.title("Bible Verse Search in KLB")
+    st.title("Bible Verse Search (KLB / NIV)")
     query = st.text_input(
-        "한글로 성경에 나오는 단어를 입력해주세요. 예) 어린양은 어린 + 양 조합이기 때문에 어린 양 중간에 띄어쓰기를 해야함",
+        "한글 또는 영문으로 성경에 나오는 단어를 입력해주세요. "
+        "예) 한글: 의로운 / 영문: righteous "
+        "(한글은 띄어쓰기에 주의하세요. 예: 어린양은 '어린 + 양' 조합)",
         value="의로운",
     )
 
-    show_niv = st.checkbox("NIV(영어) 병행 보기 (검색된 구절 전체)", value=True)
+    if not query.strip():
+        st.write("검색어를 입력해주세요.")
+        return
 
-    df, total = get_verses(query)
+    korean_query = is_korean_query(query)
+
+    if korean_query:
+        primary_version = "KLB"
+        secondary_version = "NIV"
+        secondary_checkbox_label = "NIV(영어) 병행 보기 (검색된 구절 전체)"
+        secondary_color = "green"
+    else:
+        primary_version = "NIV"
+        secondary_version = "KLB"
+        secondary_checkbox_label = "KLB(한글) 병행 보기 (검색된 구절 전체)"
+        secondary_color = "orange"
+
+    show_secondary = st.checkbox(secondary_checkbox_label, value=True)
+
+    df, total = get_verses(query, primary_version)
     if df is not None:
         st.write(f"Total results: {total}")
-        if show_niv and len(df) > 50:
+        if show_secondary and len(df) > 50:
             st.caption(
-                f"※ 검색된 {len(df)}개 구절 전체에 대해 NIV를 하나씩 가져옵니다. "
+                f"※ 검색된 {len(df)}개 구절 전체에 대해 {secondary_version}을(를) 하나씩 가져옵니다. "
                 "구절이 많으면 시간이 꽤 걸릴 수 있습니다."
             )
 
-        # 전체 구절에 대해 NIV를 가져올 때 진행 상황을 보여주는 progress bar
-        progress_bar = st.progress(0) if show_niv and len(df) > 0 else None
+        # 전체 구절에 대해 병행 번역본을 가져올 때 진행 상황을 보여주는 progress bar
+        progress_bar = st.progress(0) if show_secondary and len(df) > 0 else None
 
-        niv_list = []  # CSV 다운로드에 포함할 NIV 텍스트를 순서대로 저장
+        secondary_list = []  # CSV 다운로드에 포함할 병행 번역본 텍스트를 순서대로 저장
 
         for index, row in df.iterrows():
             st.markdown(
@@ -150,33 +177,39 @@ def main():
                 unsafe_allow_html=True,
             )
 
-            if show_niv:
-                en_ref = korean_title_to_english_ref(row["Title"])
-                if en_ref is None:
-                    st.caption("NIV: 책 이름을 인식하지 못했습니다.")
-                    niv_list.append("")
+            if show_secondary:
+                if korean_query:
+                    # 한글 검색: 제목이 "요한복음 3:16" 형태 -> 영어 참조로 변환 필요
+                    ref_for_secondary = korean_title_to_english_ref(row["Title"])
                 else:
-                    niv_text = fetch_niv_text(en_ref)
-                    if niv_text:
+                    # 영문 검색: 제목이 이미 "John 3:16" 형태 -> 그대로 사용
+                    ref_for_secondary = row["Title"].strip()
+
+                if not ref_for_secondary:
+                    st.caption(f"{secondary_version}: 책 이름을 인식하지 못했습니다.")
+                    secondary_list.append("")
+                else:
+                    secondary_text = fetch_passage_text(ref_for_secondary, secondary_version)
+                    if secondary_text:
                         st.markdown(
-                            f"<span style='color: green;'>**NIV ({en_ref})**</span>\n\n{niv_text}",
+                            f"<span style='color: {secondary_color};'>**{secondary_version} ({ref_for_secondary})**</span>\n\n{secondary_text}",
                             unsafe_allow_html=True,
                         )
-                        niv_list.append(niv_text)
+                        secondary_list.append(secondary_text)
                     else:
-                        st.caption(f"NIV 본문을 가져오지 못했습니다. ({en_ref})")
-                        niv_list.append("")
+                        st.caption(f"{secondary_version} 본문을 가져오지 못했습니다. ({ref_for_secondary})")
+                        secondary_list.append("")
 
                 if progress_bar is not None:
                     progress_bar.progress((index + 1) / len(df))
             else:
-                niv_list.append("")
+                secondary_list.append("")
 
         if progress_bar is not None:
             progress_bar.empty()
 
-        if show_niv:
-            df["NIV"] = niv_list
+        if show_secondary:
+            df[secondary_version] = secondary_list
 
         csv_data = df.to_csv().encode('utf-8-sig')
         st.download_button(
