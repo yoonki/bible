@@ -1,0 +1,31 @@
+name: Keep Streamlit App Awake
+
+on:
+  schedule:
+    # 매 30분마다 워크플로우를 "시작"합니다.
+    # 실제 방문 시각은 keep_awake.py 안에서 0~30분 랜덤 대기 후 결정되므로
+    # 결과적으로 30분~60분 사이 랜덤 간격으로 방문하는 효과가 납니다.
+    - cron: "*/30 * * * *"
+  workflow_dispatch:  # GitHub 화면에서 수동 실행도 가능하게 해줌 (테스트용)
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 저장소 체크아웃
+        uses: actions/checkout@v4
+
+      - name: 파이썬 설치
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 필요한 패키지 설치
+        run: |
+          pip install playwright
+          playwright install --with-deps chromium
+
+      - name: 앱 깨우기 스크립트 실행
+        env:
+          APP_URL: "https://bibleapppy-mp4nzkued8qtdghah7ocnh.streamlit.app/"  # 예: https://your-app.streamlit.app
+        run: python scripts/keep_awake.py
