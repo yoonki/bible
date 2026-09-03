@@ -142,6 +142,8 @@ def main():
         # 전체 구절에 대해 NIV를 가져올 때 진행 상황을 보여주는 progress bar
         progress_bar = st.progress(0) if show_niv and len(df) > 0 else None
 
+        niv_list = []  # CSV 다운로드에 포함할 NIV 텍스트를 순서대로 저장
+
         for index, row in df.iterrows():
             st.markdown(
                 f"<span style='color: blue;'>**{row['Title']}**</span>\n\n{row['Verse']}",
@@ -152,6 +154,7 @@ def main():
                 en_ref = korean_title_to_english_ref(row["Title"])
                 if en_ref is None:
                     st.caption("NIV: 책 이름을 인식하지 못했습니다.")
+                    niv_list.append("")
                 else:
                     niv_text = fetch_niv_text(en_ref)
                     if niv_text:
@@ -159,14 +162,21 @@ def main():
                             f"<span style='color: green;'>**NIV ({en_ref})**</span>\n\n{niv_text}",
                             unsafe_allow_html=True,
                         )
+                        niv_list.append(niv_text)
                     else:
                         st.caption(f"NIV 본문을 가져오지 못했습니다. ({en_ref})")
+                        niv_list.append("")
 
                 if progress_bar is not None:
                     progress_bar.progress((index + 1) / len(df))
+            else:
+                niv_list.append("")
 
         if progress_bar is not None:
             progress_bar.empty()
+
+        if show_niv:
+            df["NIV"] = niv_list
 
         csv_data = df.to_csv().encode('utf-8-sig')
         st.download_button(
