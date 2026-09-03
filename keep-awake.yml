@@ -27,5 +27,5 @@ jobs:
 
       - name: 앱 깨우기 스크립트 실행
         env:
-          APP_URL: "여기에_본인_스트림릿_앱_주소_입력"  # 예: https://your-app.streamlit.app
+          APP_URL: "https://bibleapppy-mp4nzkued8qtdghah7ocnh.streamlit.app/"  # 예: https://your-app.streamlit.app
         run: python scripts/keep_awake.py
