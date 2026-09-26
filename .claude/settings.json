@@ -1,0 +1,27 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"프로젝트 규칙(CLAUDE.md): (1) 공식문서를 확인 안 하고 스스로 판단해서 한계/모른다고 말하지 말 것 — 불확실하면 공식문서·매뉴얼·예제·웹검색으로 먼저 확인. (2) 새 기능을 설계/구현할 때는 추측하지 말고 매뉴얼·예시·웹검색으로 사용법을 먼저 확인한 뒤 구현. (3) 코드 일관성보다 신뢰도(정확성)를 우선.\"}}'",
+            "statusMessage": "운영 규칙 로드 중..."
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.file_path // empty' | { read -r f; if [ -n \"$f\" ] && [ ! -e \"$f\" ]; then printf '%s' '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"additionalContext\":\"새 파일(새 기능) 작성 전 확인: 추측하지 말고 공식 매뉴얼/예제/웹검색으로 사용법을 먼저 확인했나요? 확인 안 됐으면 먼저 확인 후 구현하세요 (CLAUDE.md 규칙 2).\"}}'; else printf '%s' '{}'; fi; } 2>/dev/null || echo '{}'",
+            "statusMessage": "새 기능 사전 확인 규칙 점검 중..."
+          }
+        ]
+      }
+    ]
+  }
+}
